@@ -1,154 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Car Branding Verification</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: sans-serif; padding: 1em; max-width: 500px; margin: auto; }
-    input, select, button { padding: 10px; margin: 10px 0; width: 100%; font-size: 1em; }
-    .photo-preview { width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; margin: 5px; }
-    .photos { display: flex; flex-wrap: wrap; justify-content: space-between; }
-    video { width: 100%; max-height: 300px; border: 1px solid #ccc; }
-    canvas { display: none; }
-    .capture-section { margin-bottom: 20px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f9f9f9;
+      padding: 1em;
+      max-width: 480px;
+      margin: auto;
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+    label {
+      display: block;
+      margin-top: 1em;
+      font-weight: bold;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    .capture-box {
+      margin-bottom: 20px;
+    }
+    .preview {
+      width: 100%;
+      height: auto;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    button.capture-btn {
+      background: #007bff;
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button.capture-btn:hover {
+      background: #0056b3;
+    }
+    #submit-btn {
+      background: #28a745;
+      color: white;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+    }
+    #submit-btn:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+    #status {
+      text-align: center;
+      margin-top: 10px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
   <h2>Car Branding Verification</h2>
-  <p>Please capture all 4 sides of your car using live camera and provide your details.</p>
 
-  <input type="text" id="driver-name" placeholder="Your Name" required>
+  <label for="name">Name</label>
+  <input type="text" id="name" placeholder="Your full name" required />
 
+  <label for="country-code">Country Code</label>
   <select id="country-code">
-    <option value="+91">🇮🇳 +91 (India)</option>
-    <option value="+1">🇺🇸 +1 (USA)</option>
-    <option value="+44">🇬🇧 +44 (UK)</option>
-    <option value="+971">🇦🇪 +971 (UAE)</option>
-    <!-- Add more country codes as needed -->
+    <option value="+91">🇮🇳 +91 India</option>
+    <option value="+1">🇺🇸 +1 USA</option>
+    <option value="+44">🇬🇧 +44 UK</option>
+    <option value="+971">🇦🇪 +971 UAE</option>
   </select>
 
-  <input type="tel" id="driver-phone" placeholder="Phone Number" required pattern="\d{7,12}">
+  <label for="phone">Phone Number</label>
+  <input type="tel" id="phone" placeholder="Phone number" required />
 
-  <div id="camera-section" class="capture-section">
-    <video id="video" autoplay playsinline></video>
-    <button id="snap">📸 Take Photo</button>
-    <canvas id="canvas"></canvas>
+  <div class="capture-box">
+    <label>Front Photo</label>
+    <button class="capture-btn" onclick="capture('front')">Capture Front</button>
+    <img id="img-front" class="preview" />
+  </div>
+  <div class="capture-box">
+    <label>Back Photo</label>
+    <button class="capture-btn" onclick="capture('back')">Capture Back</button>
+    <img id="img-back" class="preview" />
+  </div>
+  <div class="capture-box">
+    <label>Left Photo</label>
+    <button class="capture-btn" onclick="capture('left')">Capture Left</button>
+    <img id="img-left" class="preview" />
+  </div>
+  <div class="capture-box">
+    <label>Right Photo</label>
+    <button class="capture-btn" onclick="capture('right')">Capture Right</button>
+    <img id="img-right" class="preview" />
   </div>
 
-  <div class="photos">
-    <div>
-      <label>Front</label>
-      <img id="img-front" class="photo-preview"><br>
-      <button data-side="front" class="assign-btn">Assign</button>
-    </div>
-    <div>
-      <label>Back</label>
-      <img id="img-back" class="photo-preview"><br>
-      <button data-side="back" class="assign-btn">Assign</button>
-    </div>
-    <div>
-      <label>Left</label>
-      <img id="img-left" class="photo-preview"><br>
-      <button data-side="left" class="assign-btn">Assign</button>
-    </div>
-    <div>
-      <label>Right</label>
-      <img id="img-right" class="photo-preview"><br>
-      <button data-side="right" class="assign-btn">Assign</button>
-    </div>
-  </div>
-
-  <button id="submit-btn" disabled>Submit Verification</button>
+  <button id="submit-btn" disabled>Submit</button>
   <div id="status"></div>
 
   <script>
     const endpoint = "https://formspree.io/f/mandword";
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const context = canvas.getContext('2d');
-    const snapBtn = document.getElementById('snap');
-    const assignBtns = document.querySelectorAll('.assign-btn');
-    const images = {
-      front: document.getElementById('img-front'),
-      back: document.getElementById('img-back'),
-      left: document.getElementById('img-left'),
-      right: document.getElementById('img-right')
-    };
-    const dataURLs = { front: null, back: null, left: null, right: null };
-    let latestCapture = null;
-    let locationCoords = '';
+    const photos = { front: null, back: null, left: null, right: null };
+    let locationCoords = "";
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      .then(stream => video.srcObject = stream)
-      .catch(err => alert("Camera not accessible: " + err.message));
+    function validatePhone(phone) {
+      return /^\d{7,12}$/.test(phone);
+    }
 
-    snapBtn.onclick = () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0);
-      latestCapture = canvas.toDataURL("image/png");
-      alert("Photo captured! Now assign it to a side.");
-    };
+    function updateSubmitButton() {
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const phoneValid = validatePhone(phone);
+      const allPhotos = Object.values(photos).every(Boolean);
+      const ready = name && phoneValid && locationCoords && allPhotos;
+      document.getElementById("submit-btn").disabled = !ready;
+    }
 
-    assignBtns.forEach(btn => {
-      btn.onclick = () => {
-        const side = btn.getAttribute('data-side');
-        if (latestCapture) {
-          images[side].src = latestCapture;
-          dataURLs[side] = latestCapture;
-          validateForm();
-        } else {
-          alert("Please take a photo first.");
-        }
-      };
-    });
+    function capture(side) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => {
+          const video = document.createElement("video");
+          video.srcObject = stream;
+          video.play();
+
+          const overlay = document.createElement("div");
+          overlay.style.position = "fixed";
+          overlay.style.top = "0";
+          overlay.style.left = "0";
+          overlay.style.width = "100vw";
+          overlay.style.height = "100vh";
+          overlay.style.background = "rgba(0,0,0,0.8)";
+          overlay.style.display = "flex";
+          overlay.style.justifyContent = "center";
+          overlay.style.alignItems = "center";
+          overlay.style.zIndex = "9999";
+
+          video.style.maxWidth = "100%";
+          overlay.appendChild(video);
+
+          const snapButton = document.createElement("button");
+          snapButton.textContent = "📸 Take Photo";
+          snapButton.style.position = "absolute";
+          snapButton.style.bottom = "20px";
+          snapButton.style.padding = "12px 24px";
+          snapButton.style.background = "#28a745";
+          snapButton.style.color = "white";
+          snapButton.style.fontSize = "1.2em";
+          snapButton.style.border = "none";
+          snapButton.style.borderRadius = "8px";
+          overlay.appendChild(snapButton);
+
+          snapButton.onclick = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext("2d").drawImage(video, 0, 0);
+            const dataURL = canvas.toDataURL("image/png");
+            document.getElementById("img-" + side).src = dataURL;
+            photos[side] = dataURL;
+
+            stream.getTracks().forEach(t => t.stop());
+            document.body.removeChild(overlay);
+            updateSubmitButton();
+          };
+
+          document.body.appendChild(overlay);
+        })
+        .catch(err => {
+          alert("Camera error: " + err.message);
+        });
+    }
+
+    document.getElementById("name").addEventListener("input", updateSubmitButton);
+    document.getElementById("phone").addEventListener("input", updateSubmitButton);
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(pos => {
         locationCoords = pos.coords.latitude + "," + pos.coords.longitude;
-        validateForm();
+        updateSubmitButton();
       });
     }
 
-    function validateForm() {
-      const name = document.getElementById('driver-name').value.trim();
-      const phone = document.getElementById('driver-phone').value.trim();
-      const phoneValid = /^\d{7,12}$/.test(phone);
-      const allPhotos = Object.values(dataURLs).every(Boolean);
-      const valid = name && phoneValid && locationCoords && allPhotos;
-      document.getElementById('submit-btn').disabled = !valid;
-    }
-
-    document.getElementById('driver-name').addEventListener('input', validateForm);
-    document.getElementById('driver-phone').addEventListener('input', validateForm);
-    document.getElementById('country-code').addEventListener('change', validateForm);
-
-    document.getElementById('submit-btn').onclick = () => {
+    document.getElementById("submit-btn").onclick = () => {
       const formData = new FormData();
-      formData.append("name", document.getElementById("driver-name").value);
-      formData.append("phone", document.getElementById("country-code").value + document.getElementById("driver-phone").value);
-      formData.append("frontPhoto", dataURLs.front);
-      formData.append("backPhoto", dataURLs.back);
-      formData.append("leftPhoto", dataURLs.left);
-      formData.append("rightPhoto", dataURLs.right);
+      formData.append("name", document.getElementById("name").value.trim());
+      formData.append("phone", document.getElementById("country-code").value + document.getElementById("phone").value.trim());
+      formData.append("frontPhoto", photos.front);
+      formData.append("backPhoto", photos.back);
+      formData.append("leftPhoto", photos.left);
+      formData.append("rightPhoto", photos.right);
       formData.append("location", locationCoords);
 
       fetch(endpoint, {
         method: "POST",
         body: formData,
-        headers: { 'Accept': 'application/json' }
+        headers: { "Accept": "application/json" }
       })
-      .then(res => {
-        if (res.ok) {
-          document.getElementById("status").innerText = "✅ Submitted successfully!";
-        } else {
-          document.getElementById("status").innerText = "❌ Submission failed.";
-        }
-      })
-      .catch(err => {
-        document.getElementById("status").innerText = "❌ Error: " + err.message;
-      });
+        .then(res => {
+          if (res.ok) {
+            document.getElementById("status").innerText = "✅ Submitted successfully!";
+            document.getElementById("submit-btn").disabled = true;
+          } else {
+            document.getElementById("status").innerText = "❌ Submission failed.";
+          }
+        })
+        .catch(err => {
+          document.getElementById("status").innerText = "❌ Error: " + err.message;
+        });
     };
   </script>
 </body>
