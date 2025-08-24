@@ -25,10 +25,16 @@
       width: 100%;
       padding: 12px;
       margin-top: 6px;
-      margin-bottom: 12px;
+      margin-bottom: 6px;
       font-size: 1em;
       border: 1px solid #ccc;
       border-radius: 8px;
+    }
+    .error {
+      color: red;
+      font-size: 0.9em;
+      margin-top: -6px;
+      margin-bottom: 6px;
     }
     .capture-box {
       margin-bottom: 20px;
@@ -67,6 +73,32 @@
       margin-top: 10px;
       font-weight: bold;
     }
+    .camera-modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .camera-modal video {
+      width: 90%;
+      max-height: 70vh;
+      border-radius: 10px;
+    }
+    .camera-modal button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      background: #28a745;
+      color: white;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
@@ -85,6 +117,7 @@
 
   <label for="phone">Phone Number</label>
   <input type="tel" id="phone" placeholder="Phone number" required />
+  <div id="phone-error" class="error" style="display: none;">Please enter a valid phone number (7–12 digits).</div>
 
   <div class="capture-box">
     <label>Front Photo</label>
@@ -123,6 +156,7 @@
       const name = document.getElementById("name").value.trim();
       const phone = document.getElementById("phone").value.trim();
       const phoneValid = validatePhone(phone);
+      document.getElementById("phone-error").style.display = phoneValid ? "none" : "block";
       const allPhotos = Object.values(photos).every(Boolean);
       const ready = name && phoneValid && locationCoords && allPhotos;
       document.getElementById("submit-btn").disabled = !ready;
@@ -135,32 +169,11 @@
           video.srcObject = stream;
           video.play();
 
-          const overlay = document.createElement("div");
-          overlay.style.position = "fixed";
-          overlay.style.top = "0";
-          overlay.style.left = "0";
-          overlay.style.width = "100vw";
-          overlay.style.height = "100vh";
-          overlay.style.background = "rgba(0,0,0,0.8)";
-          overlay.style.display = "flex";
-          overlay.style.justifyContent = "center";
-          overlay.style.alignItems = "center";
-          overlay.style.zIndex = "9999";
-
-          video.style.maxWidth = "100%";
-          overlay.appendChild(video);
+          const modal = document.createElement("div");
+          modal.className = "camera-modal";
 
           const snapButton = document.createElement("button");
           snapButton.textContent = "📸 Take Photo";
-          snapButton.style.position = "absolute";
-          snapButton.style.bottom = "20px";
-          snapButton.style.padding = "12px 24px";
-          snapButton.style.background = "#28a745";
-          snapButton.style.color = "white";
-          snapButton.style.fontSize = "1.2em";
-          snapButton.style.border = "none";
-          snapButton.style.borderRadius = "8px";
-          overlay.appendChild(snapButton);
 
           snapButton.onclick = () => {
             const canvas = document.createElement("canvas");
@@ -170,13 +183,14 @@
             const dataURL = canvas.toDataURL("image/png");
             document.getElementById("img-" + side).src = dataURL;
             photos[side] = dataURL;
-
             stream.getTracks().forEach(t => t.stop());
-            document.body.removeChild(overlay);
+            document.body.removeChild(modal);
             updateSubmitButton();
           };
 
-          document.body.appendChild(overlay);
+          modal.appendChild(video);
+          modal.appendChild(snapButton);
+          document.body.appendChild(modal);
         })
         .catch(err => {
           alert("Camera error: " + err.message);
