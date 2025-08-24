@@ -7,14 +7,14 @@
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f9f9f9;
+      background: #f7f7f7;
       padding: 1em;
       max-width: 480px;
       margin: auto;
     }
     h2 {
       text-align: center;
-      color: #333;
+      color: #222;
     }
     label {
       display: block;
@@ -46,17 +46,6 @@
       border-radius: 6px;
       margin-top: 10px;
     }
-    button.capture-btn {
-      background: #007bff;
-      color: white;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    button.capture-btn:hover {
-      background: #0056b3;
-    }
     #submit-btn {
       background: #28a745;
       color: white;
@@ -72,32 +61,6 @@
       text-align: center;
       margin-top: 10px;
       font-weight: bold;
-    }
-    .camera-modal {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.9);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-    .camera-modal video {
-      width: 90%;
-      max-height: 70vh;
-      border-radius: 10px;
-    }
-    .camera-modal button {
-      margin-top: 20px;
-      padding: 12px 24px;
-      background: #28a745;
-      color: white;
-      font-size: 1.2em;
-      border: none;
-      border-radius: 8px;
     }
   </style>
 </head>
@@ -120,23 +83,23 @@
   <div id="phone-error" class="error" style="display: none;">Please enter a valid phone number (7–12 digits).</div>
 
   <div class="capture-box">
-    <label>Front Photo</label>
-    <button class="capture-btn" onclick="capture('front')">Capture Front</button>
+    <label for="front">Front Photo</label>
+    <input type="file" accept="image/*" capture="environment" id="front" onchange="previewImage(this, 'img-front')" />
     <img id="img-front" class="preview" />
   </div>
   <div class="capture-box">
-    <label>Back Photo</label>
-    <button class="capture-btn" onclick="capture('back')">Capture Back</button>
+    <label for="back">Back Photo</label>
+    <input type="file" accept="image/*" capture="environment" id="back" onchange="previewImage(this, 'img-back')" />
     <img id="img-back" class="preview" />
   </div>
   <div class="capture-box">
-    <label>Left Photo</label>
-    <button class="capture-btn" onclick="capture('left')">Capture Left</button>
+    <label for="left">Left Photo</label>
+    <input type="file" accept="image/*" capture="environment" id="left" onchange="previewImage(this, 'img-left')" />
     <img id="img-left" class="preview" />
   </div>
   <div class="capture-box">
-    <label>Right Photo</label>
-    <button class="capture-btn" onclick="capture('right')">Capture Right</button>
+    <label for="right">Right Photo</label>
+    <input type="file" accept="image/*" capture="environment" id="right" onchange="previewImage(this, 'img-right')" />
     <img id="img-right" class="preview" />
   </div>
 
@@ -152,6 +115,18 @@
       return /^\d{7,12}$/.test(phone);
     }
 
+    function previewImage(input, id) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById(id).src = e.target.result;
+        photos[id.split('-')[1]] = e.target.result;
+        updateSubmitButton();
+      };
+      reader.readAsDataURL(file);
+    }
+
     function updateSubmitButton() {
       const name = document.getElementById("name").value.trim();
       const phone = document.getElementById("phone").value.trim();
@@ -160,41 +135,6 @@
       const allPhotos = Object.values(photos).every(Boolean);
       const ready = name && phoneValid && locationCoords && allPhotos;
       document.getElementById("submit-btn").disabled = !ready;
-    }
-
-    function capture(side) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        .then(stream => {
-          const video = document.createElement("video");
-          video.srcObject = stream;
-          video.play();
-
-          const modal = document.createElement("div");
-          modal.className = "camera-modal";
-
-          const snapButton = document.createElement("button");
-          snapButton.textContent = "📸 Take Photo";
-
-          snapButton.onclick = () => {
-            const canvas = document.createElement("canvas");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext("2d").drawImage(video, 0, 0);
-            const dataURL = canvas.toDataURL("image/png");
-            document.getElementById("img-" + side).src = dataURL;
-            photos[side] = dataURL;
-            stream.getTracks().forEach(t => t.stop());
-            document.body.removeChild(modal);
-            updateSubmitButton();
-          };
-
-          modal.appendChild(video);
-          modal.appendChild(snapButton);
-          document.body.appendChild(modal);
-        })
-        .catch(err => {
-          alert("Camera error: " + err.message);
-        });
     }
 
     document.getElementById("name").addEventListener("input", updateSubmitButton);
