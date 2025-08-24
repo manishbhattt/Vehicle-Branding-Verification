@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Car Branding Verification</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; padding: 1em; max-width: 480px; margin: auto; }
+    input, button { padding: 10px; margin: 10px 0; width: 100%; font-size: 1em; }
+    .photo-preview { width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; margin: 5px; }
+    .photos { display: flex; justify-content: space-between; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <h2>Car Branding Verification</h2>
+  <p>Please take live photos of your car from all 4 sides and provide your details.</p>
+
+  <input type="text" id="driver-name" placeholder="Your Name" required>
+  <input type="tel" id="driver-phone" placeholder="Phone with country code (e.g. +91...)" pattern="^\+\d{10,15}$" required>
+
+  <div class="photos">
+    <div>
+      <button id="btn-front">Capture Front</button><br>
+      <img id="img-front" class="photo-preview" alt="Front">
+    </div>
+    <div>
+      <button id="btn-back">Capture Back</button><br>
+      <img id="img-back" class="photo-preview" alt="Back">
+    </div>
+    <div>
+      <button id="btn-left">Capture Left</button><br>
+      <img id="img-left" class="photo-preview" alt="Left">
+    </div>
+    <div>
+      <button id="btn-right">Capture Right</button><br>
+      <img id="img-right" class="photo-preview" alt="Right">
+    </div>
+  </div>
+
+  <button id="submit-btn" disabled>Submit Verification</button>
+  <div id="status"></div>
+
+  <script>
+    const endpoint = 'https://formspree.io/f/mandword';
+
+    const photos = {
+      front: { button: document.getElementById('btn-front'), img: document.getElementById('img-front'), data: null },
+      back: { button: document.getElementById('btn-back'), img: document.getElementById('img-back'), data: null },
+      left: { button: document.getElementById('btn-left'), img: document.getElementById('img-left'), data: null },
+      right: { button: document.getElementById('btn-right'), img: document.getElementById('img-right'), data: null },
+    };
+
+    let locationCoords = '';
+
+    function enableSubmitIfReady() {
+      const name = document.getElementById('driver-name').value.trim();
+      const phone = document.getElementById('driver-phone').value.trim();
+      const phoneValid = /^\+\d{10,15}$/.test(phone);
+      const allPhotos = Object.values(photos).every(p => p.data);
+      const ready = name && phoneValid && allPhotos && locationCoords;
+      document.getElementById('submit-btn').disabled = !ready;
+    }
+
+    function capturePhoto(side) {
+      return () => {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+          .then(stream => {
+            const video = document.createElement('video');
+            video.autoplay = true;
+            video.srcObject = stream;
+            document.body.appendChild(video);
+
+            const takeSnapshot = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              canvas.getContext('2d').drawImage(video, 0, 0);
+              photos[side].data = canvas.toDataURL('image/png');
+              photos[side].img.src = photos[side].data;
+
+              video.pause();
+              video.srcObject.getTracks().forEach(track => track.stop());
+              document.body.removeChild(video);
+              enableSubmitIfReady();
+            };
+
+            video.addEventListener('canplay', () => {
+              takeSnapshot();
+            }, { once: true });
+          })
+          .catch(err => {
+            alert('Camera error: ' + err.message);
+          });
+      };
+    }
+
+    for (const side in photos) {
+      photos[side].button.addEventListener('click', capturePhoto(side));
+    }
+
+    document.getElementById('driver-name').addEventListener('input', enableSubmitIfReady);
+    document.getElementById('driver-phone').addEventListener('input', enableSubmitIfReady);
+
+    // Capture GPS location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        locationCoords = pos.coords.latitude + ',' + pos.coords.longitude;
+        enableSubmitIfReady();
+      }, err => {
+        alert('Location error: ' + err.message);
+      });
+    } else {
+      alert('Geolocation not supported by your browser.');
+    }
+
+    document.getElementById('submit-btn').addEventListener('click', () => {
+      const formData = new FormData();
+      formData.append('name', document.getElementById('driver-name').value.trim());
+      formData.append('phone', document.getElementById('driver-phone').value.trim());
+      formData.append('frontPhoto', photos.front.data);
+      formData.append('backPhoto', photos.back.data);
+      formData.append('leftPhoto', photos.left.data);
+      formData.append('rightPhoto', photos.right.data);
+      formData.append('location', locationCoords);
+
+      fetch(endpoint, {
+        method: 'POST',
+        body: formData,
+        headers: { 'Accept': 'application/json' }
+      })
+      .then(response => {
+        if (response.ok) {
+          document.getElementById('status').innerText = 'Submitted successfully!';
+          document.getElementById('submit-btn').disabled = true;
+        } else {
+          document.getElementById('status').innerText = 'Submission failed: ' + response.statusText;
+        }
+      })
+      .catch(err => {
+        document.getElementById('status').innerText = 'Error: ' + err.message;
+      });
+    });
+  </script>
+</body>
+</html>
